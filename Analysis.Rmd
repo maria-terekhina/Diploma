@@ -20,8 +20,7 @@ library(effects)
 library(tidyverse)
 ```
 ```{r include=FALSE, echo=FALSE}
-clean_data <- read.csv("C:\\Users\\Masha\\Documents\\Diploma\\clean_data.csv", 
-                       sep = ";", encoding = 'UTF-8')
+clean_data <- read.csv("clean_data.csv", sep = ";", encoding = 'UTF-8')
 ```
 ```{r}
 clean_data %>% 
@@ -160,5 +159,8 @@ brms_int_lang <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
                 control=list(adapt_delta=0.9, max_treedepth=15))
 summary(brms_int_lang)
 ```
-
+## Bayes factor for converged models
+```{r}
+bayes_factor(brms_syll, brms_int)
+```
 
