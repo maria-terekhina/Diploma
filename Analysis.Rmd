@@ -1,0 +1,164 @@
+---
+title: "Analysis"
+author: "Maria Terekhina"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, comment="", results="hide", echo=FALSE}
+library(lme4)
+library(dplyr)
+library(ggplot2)
+library(lmerTest)
+library(brms)
+library(lmtest)
+library(effects)
+library(tidyverse)
+```
+```{r include=FALSE, echo=FALSE}
+clean_data <- read.csv("C:\\Users\\Masha\\Documents\\Diploma\\clean_data.csv", 
+                       sep = ";", encoding = 'UTF-8')
+```
+```{r}
+clean_data %>% 
+  group_by(PARTICIPANT) %>% 
+  mutate(n = n(),
+         S2 = log(SYLLABLES)) %>%
+  filter(n > 100) %>% 
+  filter(DURATION < 15000) %>% 
+  group_by(LANGUAGE) %>% 
+  mutate(ln = n()) ->
+  known_age
+```
+```{r}
+qqnorm(known_age$RATE)
+qqline(known_age$RATE)
+``` 
+
+# Multilevel Mixed-Effects Models (lme4)
+```{r}
+Model_int_gen_lang <- lmer(RATE ~ 1 + (1|LANGUAGE/GENDER/PARTICIPANT), 
+                           data=known_age, REML=FALSE,
+                           control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_int_gen_lang)
+```
+```{r}
+Model_int_gen <- lmer(RATE ~ 1 + (1|GENDER/PARTICIPANT), 
+                    data=known_age, REML=FALSE,
+                    control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_int_gen)
+```
+```{r}
+Model_syll_lang <- lmer(RATE ~ S2 + (S2|LANGUAGE/PARTICIPANT), 
+                        data=known_age, REML=FALSE,
+                        control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_syll_lang)
+```
+```{r}
+Model_syll <- lmer(RATE ~ S2 + (S2|PARTICIPANT), 
+                      data=known_age, REML=FALSE,
+                   control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_syll)
+```
+```{r}
+Model_int_lang <- lmer(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), 
+                       data=known_age, REML=FALSE,
+                       control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_int_lang)
+```
+```{r}
+Model_int <- lmer(RATE ~ 1 + (1|PARTICIPANT), 
+                  data=known_age, REML=FALSE,
+                  control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+summary(Model_int)
+```
+
+## ANOVA test
+```{r}
+anova(Model_int_gen_lang, Model_int_gen, Model_syll_lang, Model_syll, Model_int_lang, Model_int)
+```
+```{r}
+anova(Model_syll, Model_syll_lang)
+```
+```{r}
+anova(Model_int_lang, Model_int)
+```
+```{r}
+anova(Model_int_gen, Model_int_gen_lang)
+```
+## Residuals plots
+```{r}
+qplot(y=residuals(Model_int_gen_lang), x=predict(Model_int_gen_lang))
+```
+```{r}
+qplot(y=residuals(Model_int_gen), x=predict(Model_int_gen))
+```
+```{r}
+qplot(y=residuals(Model_syll_lang), x=predict(Model_syll_lang))
+```
+```{r}
+qplot(y=residuals(Model_syll), x=predict(Model_syll))
+```
+```{r}
+qplot(y=residuals(Model_int_lang), x=predict(Model_int_lang))
+```
+```{r}
+qplot(y=residuals(Model_int), x=predict(Model_int))
+```
+
+## Predictor effect plots
+```{r}
+syll <- predictorEffect("S2", Model_syll)
+plot(syll, main='SYLLABLES predictor effect plot',sub='Model 4',
+     axes=list(x=list(S2=list(transform=list(trans=exp, inverse=log), lab='SYLLABLES, log-scale'))))
+```
+```{r}
+  
+syll_lang <- predictorEffect("S2", Model_syll_lang)
+plot(syll_lang, main='SYLLABLES predictor effect plot',sub='Model 3',
+     axes=list(x=list(S2=list(transform=list(trans=exp, inverse=log), 
+                              lab='SYLLABLES, log-scale'))))
+```
+
+# Multilevel Mixed-Effects Models (brms)
+```{r}
+brms_int_gen <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
+                 iter = 2000, save_all_pars = TRUE, warmup=1000, 
+                 seed=42, file = 'brms_int_gen_2000', cores = 4,
+                 control=list(adapt_delta=0.9, max_treedepth=15))
+summary(brms_int_gen)
+```
+```{r}
+brms_syll_lang <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
+                 iter = 2000, save_all_pars = TRUE, warmup=1000, 
+                 seed=42, file = 'brms_syll_lang_2000', cores = 4,
+                 control=list(adapt_delta=0.9, max_treedepth=15))
+summary(brms_syll_lang)
+```
+```{r}
+brms_syll <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
+                 iter = 2000, save_all_pars = TRUE, warmup=1000, 
+                 seed=42, file = 'brms_syll_2000', cores = 4,
+                 control=list(adapt_delta=0.9, max_treedepth=15))
+summary(brms_syll)
+```
+```{r}
+brms_int <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
+                iter = 2000, save_all_pars = TRUE, warmup=1000, 
+                seed=42, file = 'brms_int_2000', cores = 4,
+                control=list(adapt_delta=0.9, max_treedepth=15))
+summary(brms_int)
+```
+```{r}
+brms_int_lang <- brm(RATE ~ 1 + (1|LANGUAGE/PARTICIPANT), data=known_age,
+                iter = 2000, save_all_pars = TRUE, warmup=1000, 
+                seed=42, file = 'brms_int_lang_2000',cores = 4,
+                control=list(adapt_delta=0.9, max_treedepth=15))
+summary(brms_int_lang)
+```
+
+
